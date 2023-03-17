@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QTa
 from PyQt5 import Qt, QtWidgets
 import sys
 import psycopg2
+import string
 
 
 def one_query(col, tab, row_id):
@@ -24,11 +25,12 @@ class MainApp(Qt.QWidget):
         self.label = Qt.QLabel('Пользовательские заявки')
         self.label.setStyleSheet("color:black;"
                                  "font: bold 20pt 'Arial'")
-        self.checkbox_process = Qt.QCheckBox('Необработанные заявки')
         self.label.setAlignment(Qtt.AlignCenter)
-
+        self.checkbox_process = Qt.QCheckBox('Необработанные заявки')
+        self.refresh_btn = Qt.QPushButton('Обновить')
         check_layout = Qt.QHBoxLayout()
         check_layout.addWidget(self.checkbox_process)
+        check_layout.addWidget(self.refresh_btn)
         check_layout.setAlignment(Qtt.AlignRight)
         v_layout = Qt.QVBoxLayout(self)
         table_layout = Qt.QHBoxLayout()
@@ -40,24 +42,31 @@ class MainApp(Qt.QWidget):
         # Проверка изменения состояния чекбокса
         self.checkbox_process.stateChanged.connect(self.state_cb)
 
+        # Сигнал двойного нажатия по элементу таблицы
         self.table.doubleClicked.connect(self.item_doubleclick)
 
         # Первое заполнение таблицы
         self.table_filling(state=self.checkbox_process.checkState())
+
+        # Нажатие кнопки обновления таблицы
+        self.refresh_btn.clicked.connect(self.state_cb)
 
     # Обработка изменения чекбокса
     def state_cb(self, state):
         self.table_filling(state)
 
     def item_doubleclick(self):
+        self.cur_id = self.table.item(self.table.currentRow(), 0).text()
         if self.table.currentColumn() in [0, 1, 5, 6, 7, 8, 9]:
-            self.cur_id = self.table.item(self.table.currentRow(), 0).text()
             self.cur_fio = self.table.item(self.table.currentRow(), 1).text()
             self.cl_id = one_query('client', 'apps', self.cur_id)
             self.cur_phone = self.table.item(self.table.currentRow(), 5).text()
-            #self.cur_tg =
-            self.ed = Edit(self.cl_id, self.cur_fio, self.cur_phone)
-            self.ed.show()
+            self.ec = EditClient(self.cl_id, self.cur_fio, self.cur_phone)
+            self.ec.show()
+        else:
+            self.hs_id = one_query('house', 'apps', self.cur_id)
+            self.eh = EditHouse(self.hs_id)
+            self.eh.show()
 
     # Заполнение таблицы значениями из БД
     def table_filling(self, state):
@@ -115,7 +124,7 @@ class MainApp(Qt.QWidget):
             # table.horizontalHeader().setSectionResizeMode(
             #    QtWidgets.QHeaderView.Stretch)
 
-class Edit(Qt.QWidget):
+class EditClient(Qt.QWidget):
 
     def __init__(self, id_cl, fio_cl, phone_cl):
         super().__init__()
@@ -123,34 +132,38 @@ class Edit(Qt.QWidget):
         # Прорисовка окна приложения
         self.setGeometry(0, 0, 600, 600)
         self.setFixedSize(600, 600)
-        ID_label = Qt.QLabel('ID:')
+
+        self.ID_label = Qt.QLabel('ID:')
         self.ID = Qt.QTextEdit()
-        self.ID.setGeometry(0, 0, 10, 30)
         self.ID.setText(str(id_cl))
         self.ID.setReadOnly(True)
-        FIO_label = Qt.QLabel('ФИО:')
+
+        self.FIO_label = Qt.QLabel('ФИО:')
         self.FIO = Qt.QTextEdit()
         self.FIO.setText(fio_cl)
-        Phone_label = Qt.QLabel('Номер телефона:')
+
+        self.Phone_label = Qt.QLabel('Номер телефона:')
         self.Phone = Qt.QTextEdit()
         self.Phone.setText(phone_cl)
-        tg_cl = one_query('telegram', 'clients', id_cl)
-        Telegram_label = Qt.QLabel('Telegram:')
+
+        self.tg_cl = one_query('telegram', 'clients', id_cl)
+        self.Telegram_label = Qt.QLabel('Telegram:')
         self.Telegram = Qt.QTextEdit()
-        self.Telegram.setText(tg_cl)
+        self.Telegram.setText(self.tg_cl)
+
         confirm = Qt.QPushButton('Подтвердить')
         cancel = Qt.QPushButton('Отмена')
         confirm.clicked.connect(self.cnf_cl)
         cancel.clicked.connect(self.cancel_cl)
 
         v_layout = Qt.QVBoxLayout()
-        v_layout.addWidget(ID_label)
+        v_layout.addWidget(self.ID_label)
         v_layout.addWidget(self.ID)
-        v_layout.addWidget(FIO_label)
+        v_layout.addWidget(self.FIO_label)
         v_layout.addWidget(self.FIO)
-        v_layout.addWidget(Phone_label)
+        v_layout.addWidget(self.Phone_label)
         v_layout.addWidget(self.Phone)
-        v_layout.addWidget(Telegram_label)
+        v_layout.addWidget(self.Telegram_label)
         v_layout.addWidget(self.Telegram)
         btn_layout = Qt.QHBoxLayout()
         btn_layout.addWidget(confirm)
@@ -162,16 +175,75 @@ class Edit(Qt.QWidget):
         id_cl = self.ID.toPlainText()
         name = self.FIO.toPlainText().encode('cp866').decode('cp1251')
         number = self.Phone.toPlainText()
-        number = number[2:]
         tg = self.Telegram.toPlainText()
-        work_query = f'UPDATE clients SET fio = \'{name}\', phone = \'{number}\', telegram = \'{tg}\' WHERE id = {id_cl}'
-        cursor.execute(work_query)
-        connection.commit()
-        self.close()
+        line = tg.replace('_', '')
+        print(line)
+        if not(number[0:2] == '+7' and len(number[2:]) == 10 and number[2:].isdigit()):
+            Qt.QMessageBox.critical(self, 'Ошибка!', 'Введите номер в формате: \n +7ХХХХХХХХХХ')
+        elif not all([c in string.ascii_lowercase for c in line]):
+            Qt.QMessageBox.critical(self, 'Ошибка!', 'Telegram может содержать только \n латинские символы и символ _')
+        else:
+            number = number[2:]
+            work_query = f'UPDATE clients SET fio = \'{name}\', phone = \'{number}\', telegram = \'{tg}\' WHERE id = {id_cl}'
+            cursor.execute(work_query)
+            connection.commit()
+            self.close()
 
     def cancel_cl(self):
         self.close()
-        
+
+
+class EditHouse(Qt.QWidget):
+
+    def __init__(self, id_hs):
+        super().__init__()
+
+        # Прорисовка окна приложения
+        self.setGeometry(0, 0, 600, 600)
+        self.setFixedSize(600, 600)
+
+        self.ID_label = Qt.QLabel('ID:')
+        self.ID = Qt.QTextEdit()
+        self.ID.setText(str(id_hs))
+        self.ID.setReadOnly(True)
+
+        self.Address_label = Qt.QLabel('Адрес:')
+        self.Address = Qt.QTextEdit()
+        self.adr = one_query('address', 'houses', id_hs)
+        self.Address.setText(str(bytes(self.adr, 'cp1251').decode('cp866')))
+
+        self.Square_label = Qt.QLabel('Площадь:')
+        self.Square = Qt.QTextEdit()
+        self.sq = one_query('square', 'houses', id_hs)
+        self.Square.setText(str(self.sq))
+
+        self.PicsTable = Qt.QTableWidget()
+        self.PicsTable.setRowCount(0)
+        self.PicsTable.setColumnCount(2)
+        self.PicsTable.setHorizontalHeaderLabels(["ID", "Название файла"])
+        self.PicsTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.PicsTable.resizeRowsToContents()
+
+        self.ConfirmButton = Qt.QPushButton('Подтвердить')
+        self.CancelButton = Qt.QPushButton('Отмена')
+        self.AddButton = Qt.QPushButton('+')
+
+        btn_layout = Qt.QHBoxLayout()
+        btn_layout.addWidget(self.ConfirmButton)
+        btn_layout.addWidget(self.CancelButton)
+
+        vh_layout = Qt.QVBoxLayout()
+        vh_layout.addWidget(self.ID_label)
+        vh_layout.addWidget(self.ID)
+        vh_layout.addWidget(self.Address_label)
+        vh_layout.addWidget(self.Address)
+        vh_layout.addWidget(self.Square_label)
+        vh_layout.addWidget(self.Square)
+        vh_layout.addWidget(self.PicsTable)
+        vh_layout.addWidget(self.AddButton)
+        vh_layout.addLayout(btn_layout)
+
+        self.setLayout(vh_layout)
 
 
 if __name__ == '__main__':
