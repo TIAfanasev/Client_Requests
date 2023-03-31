@@ -1,9 +1,16 @@
 from PyQt5.QtCore import Qt as Qtt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QTableWidget, QTableWidgetItem, QMessageBox
-from PyQt5 import Qt, QtWidgets
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QTableWidget, QTableWidgetItem, QMessageBox, QFileDialog, QHeaderView
+from PyQt5 import Qt, QtWidgets, QtCore, QtGui
+from PyQt5.Qt import QIcon, QSize
+from PyQt5.QtGui import QPixmap
 import sys
 import psycopg2
 import string
+import shutil
+import os
+from os import listdir
+from os.path import isfile, join
+from pathlib import Path
 
 
 def one_query(col, tab, row_id):
@@ -20,7 +27,7 @@ class MainApp(Qt.QWidget):
         super().__init__()
 
         # Прорисовка окна приложения
-        self.setGeometry(0, 0, 1000, 600)
+        self.setGeometry(0, 0, 1500, 600)
         self.table = Qt.QTableWidget()
         self.label = Qt.QLabel('Пользовательские заявки')
         self.label.setStyleSheet("color:black;"
@@ -28,6 +35,7 @@ class MainApp(Qt.QWidget):
         self.label.setAlignment(Qtt.AlignCenter)
         self.checkbox_process = Qt.QCheckBox('Необработанные заявки')
         self.refresh_btn = Qt.QPushButton('Обновить')
+
         check_layout = Qt.QHBoxLayout()
         check_layout.addWidget(self.checkbox_process)
         check_layout.addWidget(self.refresh_btn)
@@ -42,11 +50,11 @@ class MainApp(Qt.QWidget):
         # Проверка изменения состояния чекбокса
         self.checkbox_process.stateChanged.connect(self.state_cb)
 
-        # Сигнал двойного нажатия по элементу таблицы
-        self.table.doubleClicked.connect(self.item_doubleclick)
-
         # Первое заполнение таблицы
         self.table_filling(state=self.checkbox_process.checkState())
+
+        # Сигнал двойного нажатия по элементу таблицы
+        self.table.doubleClicked.connect(self.item_doubleclick)
 
         # Нажатие кнопки обновления таблицы
         self.refresh_btn.clicked.connect(self.state_cb)
@@ -57,16 +65,29 @@ class MainApp(Qt.QWidget):
 
     def item_doubleclick(self):
         self.cur_id = self.table.item(self.table.currentRow(), 0).text()
-        if self.table.currentColumn() in [0, 1, 5, 6, 7, 8, 9]:
+        if self.table.currentColumn() in [1, 5, 6, 7, 8, 9]:
             self.cur_fio = self.table.item(self.table.currentRow(), 1).text()
             self.cl_id = one_query('client', 'apps', self.cur_id)
             self.cur_phone = self.table.item(self.table.currentRow(), 5).text()
             self.ec = EditClient(self.cl_id, self.cur_fio, self.cur_phone)
-            self.ec.show()
-        else:
+            if self.ec.exec_() == QtWidgets.QDialog.Accepted:
+                self.table_filling(state=self.checkbox_process.checkState())
+
+        elif self.table.currentColumn() == 2:
             self.hs_id = one_query('house', 'apps', self.cur_id)
-            self.eh = EditHouse(self.hs_id)
-            self.eh.show()
+            self.eh = EditBuild(self.hs_id)
+            if self.eh.exec_() == QtWidgets.QDialog.Accepted:
+                self.table_filling(state=self.checkbox_process.checkState())
+            
+        elif self.table.currentColumn() == 4:
+            if self.table.currentItem().text() == 'Не выполнено':
+                ready = True
+            else:
+                ready = False
+            work_query = f'UPDATE apps SET ready = \'{ready}\' WHERE id = {self.cur_id}'
+            cursor.execute(work_query)
+            connection.commit()
+            self.table_filling(state=self.checkbox_process.checkState())
 
     # Заполнение таблицы значениями из БД
     def table_filling(self, state):
@@ -78,9 +99,9 @@ class MainApp(Qt.QWidget):
              "Email"])
 
         if state:
-            display_query = 'SELECT * FROM apps WHERE ready = False'
+            display_query = 'SELECT * FROM apps WHERE ready = False ORDER BY id'
         else:
-            display_query = 'SELECT * FROM apps'
+            display_query = 'SELECT * FROM apps ORDER BY id'
 
         cursor.execute(display_query)
 
@@ -104,17 +125,23 @@ class MainApp(Qt.QWidget):
             self.table.setItem(row_count, 1, QTableWidgetItem(bytes(client_name, 'cp1251').decode('cp866')))
             self.table.setItem(row_count, 2, QTableWidgetItem(bytes(house_address, 'cp1251').decode('cp866')))
             self.table.setItem(row_count, 3, QTableWidgetItem(str(row[3])))
-            self.table.setItem(row_count, 4, QTableWidgetItem("Yes" if row[4] is True else "No"))
+            self.table.setItem(row_count, 4, QTableWidgetItem("Выполнено" if row[4] is True else "Не выполнено"))
             self.table.setItem(row_count, 5, QTableWidgetItem('+7' + str(phone)))
             self.table.setCellWidget(row_count, 6,
-                                     QtWidgets.QLabel(f"<a href='https://t.me/{telegram}'>Тык</a>", openExternalLinks=True))
+                                     QtWidgets.QLabel(f"<a href='https://t.me/{telegram}'>Перейти</a>", openExternalLinks=True))
             self.table.setCellWidget(row_count, 7,
-                                     QtWidgets.QLabel(f"<a href='https://wa.me/7{phone}'>Тык</a>", openExternalLinks=True))
+                                     QtWidgets.QLabel(f"<a href='https://wa.me/7{phone}'>Перейти</a>", openExternalLinks=True))
             self.table.setCellWidget(row_count, 8,
-                                     QtWidgets.QLabel(f"<a href='viber://chat?number=%2B7{phone}'>Тык</a>", openExternalLinks=True))
+                                     QtWidgets.QLabel(f"<a href='viber://chat?number=%2B7{phone}'>Перейти</a>", openExternalLinks=True))
             self.table.setItem(row_count, 9, QTableWidgetItem(str(mail)))
-            self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-            self.table.resizeRowsToContents()
+
+            self.table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+
+            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+
+            #self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+            #self.table.resizeRowsToContents()
 
             
             # table.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContentsOnFirstShow)
@@ -124,7 +151,8 @@ class MainApp(Qt.QWidget):
             # table.horizontalHeader().setSectionResizeMode(
             #    QtWidgets.QHeaderView.Stretch)
 
-class EditClient(Qt.QWidget):
+
+class EditClient(Qt.QDialog):
 
     def __init__(self, id_cl, fio_cl, phone_cl):
         super().__init__()
@@ -149,11 +177,11 @@ class EditClient(Qt.QWidget):
         self.tg_cl = one_query('telegram', 'clients', id_cl)
         self.Telegram_label = Qt.QLabel('Telegram:')
         self.Telegram = Qt.QTextEdit()
-        self.Telegram.setText(self.tg_cl)
+        self.Telegram.setText('@' + self.tg_cl)
 
-        confirm = Qt.QPushButton('Подтвердить')
+        self.confirm = Qt.QPushButton('Подтвердить')
         cancel = Qt.QPushButton('Отмена')
-        confirm.clicked.connect(self.cnf_cl)
+        self.confirm.clicked.connect(self.cnf_cl)
         cancel.clicked.connect(self.cancel_cl)
 
         v_layout = Qt.QVBoxLayout()
@@ -166,7 +194,7 @@ class EditClient(Qt.QWidget):
         v_layout.addWidget(self.Telegram_label)
         v_layout.addWidget(self.Telegram)
         btn_layout = Qt.QHBoxLayout()
-        btn_layout.addWidget(confirm)
+        btn_layout.addWidget(self.confirm)
         btn_layout.addWidget(cancel)
         v_layout.addLayout(btn_layout)
         self.setLayout(v_layout)
@@ -175,9 +203,11 @@ class EditClient(Qt.QWidget):
         id_cl = self.ID.toPlainText()
         name = self.FIO.toPlainText().encode('cp866').decode('cp1251')
         number = self.Phone.toPlainText()
-        tg = self.Telegram.toPlainText()
-        line = tg.replace('_', '')
-        print(line)
+        line = self.Telegram.toPlainText()
+        if line[0] == '@':
+            line = line[1:]
+        tg = line
+        line = line.replace('_', '')
         if not(number[0:2] == '+7' and len(number[2:]) == 10 and number[2:].isdigit()):
             Qt.QMessageBox.critical(self, 'Ошибка!', 'Введите номер в формате: \n +7ХХХХХХХХХХ')
         elif not all([c in string.ascii_lowercase for c in line]):
@@ -187,13 +217,13 @@ class EditClient(Qt.QWidget):
             work_query = f'UPDATE clients SET fio = \'{name}\', phone = \'{number}\', telegram = \'{tg}\' WHERE id = {id_cl}'
             cursor.execute(work_query)
             connection.commit()
-            self.close()
+            self.accept()
 
     def cancel_cl(self):
-        self.close()
+        self.reject()
 
 
-class EditHouse(Qt.QWidget):
+class EditBuild(Qt.QDialog):
 
     def __init__(self, id_hs):
         super().__init__()
@@ -206,6 +236,7 @@ class EditHouse(Qt.QWidget):
         self.ID = Qt.QTextEdit()
         self.ID.setText(str(id_hs))
         self.ID.setReadOnly(True)
+        self.id_house = id_hs
 
         self.Address_label = Qt.QLabel('Адрес:')
         self.Address = Qt.QTextEdit()
@@ -218,15 +249,13 @@ class EditHouse(Qt.QWidget):
         self.Square.setText(str(self.sq))
 
         self.PicsTable = Qt.QTableWidget()
-        self.PicsTable.setRowCount(0)
-        self.PicsTable.setColumnCount(2)
-        self.PicsTable.setHorizontalHeaderLabels(["ID", "Название файла"])
-        self.PicsTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.PicsTable.resizeRowsToContents()
 
         self.ConfirmButton = Qt.QPushButton('Подтвердить')
         self.CancelButton = Qt.QPushButton('Отмена')
-        self.AddButton = Qt.QPushButton('+')
+        self.AddButton = Qt.QPushButton('Добавить фото')
+        self.ConfirmButton.clicked.connect(self.cnf_hs)
+        self.CancelButton.clicked.connect(self.cancel_hs)
+        self.AddButton.clicked.connect(self.image_hs)
 
         btn_layout = Qt.QHBoxLayout()
         btn_layout.addWidget(self.ConfirmButton)
@@ -244,6 +273,93 @@ class EditHouse(Qt.QWidget):
         vh_layout.addLayout(btn_layout)
 
         self.setLayout(vh_layout)
+
+        if not os.path.exists(f'Images/{id_hs}'):
+            os.mkdir(f'Images/{id_hs}')
+
+        self.table_image()
+
+    def cnf_hs(self):
+        adr = self.Address.toPlainText().encode('cp866').decode('cp1251')
+        sqr = self.Square.toPlainText()
+        work_query = f'UPDATE houses SET address = \'{adr}\', square = \'{sqr}\' WHERE id = {self.id_house}'
+        cursor.execute(work_query)
+        connection.commit()
+        self.accept()
+
+    def cancel_hs(self):
+        self.reject()
+
+    def image_hs(self):
+
+        dialog = QFileDialog(self)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        dialog.setNameFilter("Images (*.png *.jpg)")
+        dialog.setDirectory('C:/')
+        dialog.setViewMode(QFileDialog.List)
+
+        if dialog.exec_():
+            file_names = dialog.selectedFiles()
+            for file in file_names:
+                shutil.copy(file, f'Images/{self.id_house}')
+
+        self.table_image()
+        #path = Path(fileName[0])
+        #print(str(fileNames))
+
+    def table_image(self):
+        self.PicsTable.clear()
+        self.PicsTable.setRowCount(0)
+        self.PicsTable.setColumnCount(2)
+        self.PicsTable.setHorizontalHeaderLabels(["Названия файлов", "Удаление"])
+
+        allimages = [f for f in listdir(f'Images/{self.id_house}') if isfile(join(f'Images/{self.id_house}', f))]
+        count = 0
+        for i in allimages:
+            self.PicsTable.insertRow(count)
+            self.PicsTable.setItem(count, 0, QTableWidgetItem(str(i)))
+            self.del_item = QTableWidgetItem("❌")
+            self.del_item.setTextAlignment(Qtt.AlignCenter)
+            self.PicsTable.setItem(count, 1, self.del_item)
+            count += 1
+
+        self.PicsTable.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+
+        self.PicsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.PicsTable.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+
+        self.PicsTable.doubleClicked.connect(self.pic_double)
+
+    def pic_double(self):
+        if self.PicsTable.currentColumn() == 1:
+            os.remove(join(f'Images/{self.id_house}', self.PicsTable.item(self.PicsTable.currentRow(), 0).text()))
+            # print(join(f'Images/{self.id_house}', self.PicsTable.item(self.PicsTable.currentRow(), 0).text()))
+            self.table_image()
+        else:
+            self.open_img = Picture(join(f'Images/{self.id_house}', self.PicsTable.item(self.PicsTable.currentRow(), 0).text()))
+            self.open_img.exec_()
+
+
+class Picture(Qt.QDialog):
+
+    def __init__(self, img_path):
+        super().__init__()
+
+        self.label = Qt.QLabel(self)
+
+        # loading image
+        self.pixmap = QPixmap(img_path)
+        self.pixmap2 = self.pixmap.scaledToHeight(512)
+
+        # adding image to label
+        self.label.setPixmap(self.pixmap2)
+
+        # Optional, resize label to image size
+        self.label.resize(self.pixmap2.width(),
+                          self.pixmap2.height())
+
+        self.setGeometry(610, 37, self.pixmap2.width(), self.pixmap2.height())
+
 
 
 if __name__ == '__main__':
