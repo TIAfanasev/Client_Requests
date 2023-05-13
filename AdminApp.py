@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
 from PyQt5 import Qt, QtWidgets
 from PyQt5.Qt import QTimer
 import sys
+import os
 import List_editor
 import Build_Editor
 import Client_Editor
@@ -192,6 +193,8 @@ if __name__ == '__main__':
 
     app = Qt.QApplication(sys.argv)
     w = MainWindow()
+    if not os.path.exists(f'Images'):
+        os.mkdir(f'Images')
     #w.show()
     w.showMaximized()
     QTimer.singleShot(1, w.table.resizeRowsToContents)
