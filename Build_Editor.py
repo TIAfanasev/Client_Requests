@@ -1,8 +1,10 @@
 from PyQt5.QtCore import Qt as Qtt
 from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox, QFileDialog, QHeaderView
 from PyQt5 import Qt, QtWidgets
+from PyQt5.QtGui import QIcon
 import shutil
 import os
+
 import Var
 import Picture_window
 
@@ -16,42 +18,43 @@ class EditBuild(Qt.QDialog):
         self.setGeometry(0, 0, 600, 650)
         self.setFixedSize(600, 650)
         self.setWindowTitle('Редактирование помещения')
+        self.setWindowIcon(QIcon("Icon.png"))
         self.setWindowFlags(Qtt.CustomizeWindowHint | Qtt.WindowCloseButtonHint)
 
         self.id_build = id_bd
 
-        if self.id_build:
+        if self.id_build != -1:
             self.ID_label = Qt.QLabel(f'ID: {self.id_build}')
         else:
             self.ID_label = Qt.QLabel(f'ID будет установлен автоматически')
-        self.ID_label.setStyleSheet("font: 10pt 'Tahoma'")
+        self.ID_label.setFont(Var.font)
 
         self.Address_label = Qt.QLabel('Адрес:')
-        self.Address_label.setStyleSheet("font: 10pt 'Tahoma'")
+        self.Address_label.setFont(Var.font)
         self.Address = Qt.QTextEdit()
-        self.Address.setFontPointSize(10)
+        self.Address.setFont(Var.font)
         self.Address.setFixedHeight(80)
-        if self.id_build:
+        if self.id_build != -1:
             self.adr = Var.one_query('address', 'buildings', id_bd)
             self.Address.setText(str(bytes(self.adr, 'cp1251').decode('cp866')))
         self.Address.setPlaceholderText('Пример: г. Москва, ул. Первомайская, д. 1')
 
         self.Square_label = Qt.QLabel('Площадь (м²):')
-        self.Square_label.setStyleSheet("font: 10pt 'Tahoma'")
+        self.Square_label.setFont(Var.font)
         self.Square = Qt.QTextEdit()
-        self.Square.setFontPointSize(10)
-        self.Square.setFixedHeight(50)
-        if self.id_build:
+        self.Square.setFont(Var.font)
+        self.Square.setFixedHeight(37)
+        if self.id_build != -1:
             self.sq = Var.one_query('square', 'buildings', id_bd)
             self.Square.setText(str(self.sq))
         self.Square.setPlaceholderText('Пример: 66')
 
         self.Price_label = Qt.QLabel('Цена от (₽):')
-        self.Price_label.setStyleSheet("font: 10pt 'Tahoma'")
+        self.Price_label.setFont(Var.font)
         self.Price = Qt.QTextEdit()
-        self.Price.setFontPointSize(10)
-        self.Price.setFixedHeight(50)
-        if self.id_build:
+        self.Price.setFont(Var.font)
+        self.Price.setFixedHeight(37)
+        if self.id_build != -1:
             self.pr = Var.one_query('price', 'buildings', id_bd)
             self.Price.setText(str(self.pr))
         self.Price.setPlaceholderText('Пример: 1000000')
@@ -60,10 +63,15 @@ class EditBuild(Qt.QDialog):
         self.PicsTable.setFixedHeight(160)
 
         self.ConfirmButton = Qt.QPushButton('Подтвердить')
+        self.ConfirmButton.setFont(Var.font)
         self.SaveButton = Qt.QPushButton('Сохранить')
+        self.SaveButton.setFont(Var.font)
         self.CancelButton = Qt.QPushButton('Отмена')
+        self.CancelButton.setFont(Var.font)
         self.AddButton = Qt.QPushButton('Добавить фото')
+        self.AddButton.setFont(Var.font)
         self.DelButton = Qt.QPushButton('Удалить')
+        self.DelButton.setFont(Var.font)
         self.DelButton.setStyleSheet('background-color: #DB4139; border-radius: 6px; color: white; '
                                      'min-width: 10em; padding: 4px')
 
@@ -87,7 +95,7 @@ class EditBuild(Qt.QDialog):
         self.vh_layout.addWidget(self.Price_label)
         self.vh_layout.addWidget(self.Price)
         self.vh_layout.addWidget(self.PicsTable)
-        if not self.id_build:
+        if not self.id_build != -1:
             self.AddButton.setEnabled(False)
             self.notif = Qt.QLabel('*чтобы добавить фото сохраните здание')
             self.notif.setStyleSheet("color:red; font: 7pt 'Arial';")
@@ -102,7 +110,7 @@ class EditBuild(Qt.QDialog):
 
         self.setLayout(self.vh_layout)
 
-        if not os.path.exists(f'Images/{id_bd}') and self.id_build:
+        if not os.path.exists(f'Images/{id_bd}') and self.id_build != -1:
             os.mkdir(f'Images/{id_bd}')
 
         self.table_image()
@@ -134,7 +142,7 @@ class EditBuild(Qt.QDialog):
                     Qt.QMessageBox.critical(self, 'Ошибка!', 'Цена не может быть меньше 1!')
                 elif pr > 9223372036854775807:
                     Qt.QMessageBox.critical(self, 'Ошибка!', 'Слишком больше значение цены!')
-                elif self.id_build:
+                elif self.id_build != -1:
                     work_query = f'UPDATE buildings SET address = \'{adr}\', square = \'{sqr}\', price = \'{pr}\' ' \
                                  f'WHERE id = {self.id_build}'
                     Var.cursor.execute(work_query)
@@ -193,7 +201,7 @@ class EditBuild(Qt.QDialog):
         self.PicsTable.setRowCount(0)
         self.PicsTable.setColumnCount(2)
         self.PicsTable.setHorizontalHeaderLabels(["Названия файлов", "Удаление"])
-        if self.id_build:
+        if self.id_build != -1:
             allimages = [f for f in os.listdir(f'Images/{self.id_build}') if os.path.isfile(os.path.join(f'Images/{self.id_build}', f))]
             count = 0
             for i in allimages:

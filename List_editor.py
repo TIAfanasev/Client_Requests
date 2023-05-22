@@ -1,6 +1,7 @@
 from PyQt5.QtCore import Qt as Qtt
 from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
 from PyQt5 import Qt, QtWidgets
+from PyQt5.QtGui import QIcon
 import Var
 import Build_Editor
 import Client_Editor
@@ -24,6 +25,7 @@ class ListEditor(Qt.QDialog):
             self.setWindowTitle('Список клиентов')
             self.label = Qt.QLabel('Редактирование списка клиентов')
             self.query = 'SELECT * FROM clients ORDER BY id'
+        self.setWindowIcon(QIcon("Icon.png"))
 
         self.label.setStyleSheet("color:black;"
                                  "font: bold 18pt 'Arial'")
@@ -31,21 +33,18 @@ class ListEditor(Qt.QDialog):
 
         self.list_table = Qt.QTableWidget()
         self.list_table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
-        if self.sender:
-            self.add_button = Qt.QPushButton('Добавить')
+        self.add_button = Qt.QPushButton('Добавить')
 
         self.layout = Qt.QVBoxLayout(self)
         self.table_layout = Qt.QHBoxLayout()
         self.table_layout.addWidget(self.list_table)
         self.layout.addWidget(self.label)
         self.layout.addLayout(self.table_layout)
-        if self.sender:
-            self.layout.addWidget(self.add_button)
+        self.layout.addWidget(self.add_button)
 
         self.fil_table()
 
-        if self.sender:
-            self.add_button.clicked.connect(self.add)
+        self.add_button.clicked.connect(self.add)
 
     def fil_table(self):
         self.list_table.clear()
@@ -100,8 +99,10 @@ class ListEditor(Qt.QDialog):
         self.fil_table()
 
     def add(self):
-        self.edit = Build_Editor.EditBuild(0)
-
-        self.edit.exec_()
+        if self.sender:
+            edit = Build_Editor.EditBuild(-1)
+        else:
+            edit = Client_Editor.EditClient(-1)
+        edit.exec_()
         self.fil_table()
 

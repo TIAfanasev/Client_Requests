@@ -2,22 +2,34 @@ from PyQt5.QtCore import Qt as Qtt
 from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
 from PyQt5 import Qt, QtWidgets
 from PyQt5.Qt import QTimer
+from PyQt5.QtGui import QIcon
 import sys
 import os
+
+import Add_request
 import List_editor
 import Build_Editor
 import Client_Editor
 import Var
 
 
-class MainWindow(Qt.QWidget):
+def add():
+    ad = Add_request.NewReq()
+    ad.exec_()
+
+
+class MainWindow(Qt.QMainWindow):
 
     def __init__(self):
         super().__init__()
 
         # Прорисовка окна приложения
         self.setGeometry(0, 0, 1500, 600)
-        self.setWindowTitle('Заявки')
+        self.setWindowTitle('Главное окно')
+        self.setWindowIcon(QIcon("Icon.png"))
+
+        central_widget = Qt.QWidget()
+        self.setCentralWidget(central_widget)
 
         self.table = Qt.QTableWidget()
         self.label = Qt.QLabel('Пользовательские заявки')
@@ -25,9 +37,15 @@ class MainWindow(Qt.QWidget):
         self.label.setAlignment(Qtt.AlignCenter)
 
         self.checkbox_process = Qt.QCheckBox('Необработанные заявки')
+        self.checkbox_process.setFont(Var.font)
         self.refresh_btn = Qt.QPushButton('Обновить')
+        self.refresh_btn.setFont(Var.font)
         self.edit_bld_btn = Qt.QPushButton('Список зданий')
+        self.edit_bld_btn.setFont(Var.font)
         self.edit_clnt_btn = Qt.QPushButton('Список клиентов')
+        self.edit_clnt_btn.setFont(Var.font)
+        self.add_req_btn = Qt.QPushButton('Создать заявку')
+        self.add_req_btn.setFont(Var.font)
 
         self.notif = Qt.QLabel('*перейти в редактирование можно двойным нажатием '
                                'ЛКМ по нужной ячейке или специальными кнопками ниже')
@@ -37,17 +55,19 @@ class MainWindow(Qt.QWidget):
         self.check_layout.addWidget(self.checkbox_process)
         self.check_layout.addWidget(self.refresh_btn)
         self.check_layout.setAlignment(Qtt.AlignRight)
-        self.v_layout = Qt.QVBoxLayout(self)
+        self.v_layout = Qt.QVBoxLayout()
         self.table_layout = Qt.QHBoxLayout()
         self.table_layout.addWidget(self.table)
         self.button_layout = Qt.QHBoxLayout()
         self.button_layout.addWidget(self.edit_bld_btn)
         self.button_layout.addWidget(self.edit_clnt_btn)
+        self.button_layout.addWidget(self.add_req_btn)
         self.v_layout.addWidget(self.label)
         self.v_layout.addLayout(self.check_layout)
         self.v_layout.addLayout(self.table_layout)
         self.v_layout.addWidget(self.notif)
         self.v_layout.addLayout(self.button_layout)
+        central_widget.setLayout(self.v_layout)
 
         # Первое заполнение таблицы
         self.state_cb()
@@ -65,9 +85,10 @@ class MainWindow(Qt.QWidget):
 
         self.edit_clnt_btn.clicked.connect(self.editor)
 
+        self.add_req_btn.clicked.connect(add)
+
     def editor(self):
         sender = self.sender()
-        # print(sender.text())
         if sender.text() == 'Список зданий':
             self.edit = List_editor.ListEditor(1)
         else:
@@ -164,7 +185,10 @@ class MainWindow(Qt.QWidget):
             item.setTextAlignment(Qtt.AlignCenter)
             self.table.setItem(row_count, 5, item)
 
-            item = Qt.QLabel(f"<a href='https://t.me/{telegram}'>Перейти</a>", openExternalLinks=True)
+            if telegram:
+                item = Qt.QLabel(f"<a href='https://t.me/{telegram}'>Перейти</a>", openExternalLinks=True)
+            else:
+                item = Qt.QLabel("Не указан")
             item.setAlignment(Qtt.AlignCenter)
             item.setMinimumHeight(15)
             self.table.setCellWidget(row_count, 6, item)
@@ -187,6 +211,7 @@ class MainWindow(Qt.QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.table.resizeRowsToContents()
 
 
 if __name__ == '__main__':
@@ -195,9 +220,8 @@ if __name__ == '__main__':
     w = MainWindow()
     if not os.path.exists(f'Images'):
         os.mkdir(f'Images')
-    #w.show()
     w.showMaximized()
-    QTimer.singleShot(1, w.table.resizeRowsToContents)
+    QTimer.singleShot(100, w.table.resizeRowsToContents)
     try:
         sys.exit(app.exec_())
     finally:

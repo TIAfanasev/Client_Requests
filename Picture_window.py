@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt as Qtt
 from PyQt5 import Qt
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QIcon
 
 
 class Picture(Qt.QDialog):
@@ -11,16 +11,14 @@ class Picture(Qt.QDialog):
         self.label = Qt.QLabel(self)
 
         self.setWindowTitle('Просмотр изображения')
+        self.setWindowIcon(QIcon("Icon.png"))
         self.setWindowFlags(Qtt.CustomizeWindowHint | Qtt.WindowCloseButtonHint)
 
-        # loading image
         self.pixmap = QPixmap(img_path)
         self.pixmap2 = self.pixmap.scaledToHeight(512)
 
-        # adding image to label
         self.label.setPixmap(self.pixmap2)
 
-        # Optional, resize label to image size
         self.label.resize(self.pixmap2.width(),
                           self.pixmap2.height())
 
