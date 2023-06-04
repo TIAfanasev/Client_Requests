@@ -26,8 +26,8 @@ def simple_query(col, tab, check, id_cl):
 connection = psycopg2.connect(
         database="clapdb",
         user="postgres",
-        password="12345",
-        host="127.0.0.1",
+        host="localhost",
+        password="94286130Sup",
         port="5432"
     )
 cursor = connection.cursor()

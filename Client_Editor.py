@@ -35,7 +35,7 @@ class EditClient(Qt.QDialog):
         self.FIO.setPlaceholderText('Пример: Иванов Иван Иванович')
         if self.id_cl != -1:
             self.fio_cl = Var.one_query('fio', 'clients', self.id_cl)
-            self.FIO.setText(bytes(self.fio_cl, 'cp1251').decode('cp866'))
+            self.FIO.setText(self.fio_cl)
 
         self.Phone_label = Qt.QLabel('Номер телефона:')
         self.Phone_label.setFont(Var.font)
@@ -95,7 +95,7 @@ class EditClient(Qt.QDialog):
         self.setLayout(v_layout)
 
     def cnf_cl(self):
-        name = self.FIO.toPlainText().encode('cp866').decode('cp1251').strip()
+        name = self.FIO.toPlainText().strip()
         number = self.Phone.text()[2:]
         number = int(''.join(filter(str.isdigit, number)))
         line = self.Telegram.toPlainText().strip()

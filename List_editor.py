@@ -68,7 +68,7 @@ class ListEditor(Qt.QDialog):
             item.setTextAlignment(Qtt.AlignCenter)
             self.list_table.setItem(row_count, 0, item)
 
-            item = QTableWidgetItem(bytes(str(row[1]), 'cp1251').decode('cp866'))
+            item = QTableWidgetItem(row[1])
             self.list_table.setItem(row_count, 1, item)
 
             if self.sender:

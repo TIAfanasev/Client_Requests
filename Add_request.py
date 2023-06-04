@@ -28,20 +28,20 @@ class NewReq(Qt.QDialog):
         records = Var.cursor.fetchall()
         translate_names = []
         for rec in records:
-            translate_names.append(rec[0].encode('cp1251').decode('cp866'))
+            translate_names.append(rec[0])
 
         self.select_user = Qt.QComboBox(self)
         self.select_user.addItems(translate_names)
         self.select_user.setFont(Var.font)
         self.select_user.setCurrentText('Роль не выбрана')
 
-        work_query = f'SELECT address FROM buildings'
+        work_query = f'SELECT descript FROM buildings'
         Var.cursor.execute(work_query)
         Var.connection.commit()
         records = Var.cursor.fetchall()
         translate_address = []
         for rec in records:
-            translate_address.append(rec[0].encode('cp1251').decode('cp866'))
+            translate_address.append(rec[0])
 
         self.select_bld = Qt.QComboBox(self)
         self.select_bld.addItems(translate_address)
@@ -66,13 +66,13 @@ class NewReq(Qt.QDialog):
     def add_req(self):
 
         work_query = f'SELECT id FROM clients WHERE fio = %s'
-        Var.cursor.execute(work_query, (self.select_user.currentText().encode('cp866').decode('cp1251'),))
+        Var.cursor.execute(work_query, (self.select_user.currentText(),))
         Var.connection.commit()
         records = Var.cursor.fetchall()
         user_id = records[0][0]
 
-        work_query = f'SELECT id FROM buildings WHERE address = %s'
-        Var.cursor.execute(work_query, (self.select_bld.currentText().encode('cp866').decode('cp1251'),))
+        work_query = f'SELECT id FROM buildings WHERE descript = %s'
+        Var.cursor.execute(work_query, (self.select_bld.currentText(),))
         Var.connection.commit()
         records = Var.cursor.fetchall()
         bld_id = records[0][0]
@@ -81,6 +81,9 @@ class NewReq(Qt.QDialog):
 
         work_query = f'INSERT INTO apps (client, building, date, ready) ' \
                      f'VALUES (\'{user_id}\', \'{bld_id}\', \'{dt}\', \'{False}\')'
+        Var.cursor.execute(work_query)
+        Var.connection.commit()
+        work_query = f'UPDATE buildings SET buildings_used = buildings.buildings_used || {user_id} WHERE id = {bld_id}'
         Var.cursor.execute(work_query)
         Var.connection.commit()
         self.accept()

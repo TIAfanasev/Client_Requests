@@ -15,8 +15,8 @@ class EditBuild(Qt.QDialog):
         super().__init__()
 
         # Прорисовка окна приложения
-        self.setGeometry(0, 0, 600, 650)
-        self.setFixedSize(600, 650)
+        self.setGeometry(0, 0, 600, 610)
+        self.setFixedSize(600, 610)
         self.setWindowTitle('Редактирование помещения')
         self.setWindowIcon(QIcon("Icon.png"))
         self.setWindowFlags(Qtt.CustomizeWindowHint | Qtt.WindowCloseButtonHint)
@@ -29,15 +29,15 @@ class EditBuild(Qt.QDialog):
             self.ID_label = Qt.QLabel(f'ID будет установлен автоматически')
         self.ID_label.setFont(Var.font)
 
-        self.Address_label = Qt.QLabel('Адрес:')
+        self.Address_label = Qt.QLabel('Город:')
         self.Address_label.setFont(Var.font)
         self.Address = Qt.QTextEdit()
         self.Address.setFont(Var.font)
-        self.Address.setFixedHeight(80)
+        self.Address.setFixedHeight(37)
         if self.id_build != -1:
             self.adr = Var.one_query('address', 'buildings', id_bd)
-            self.Address.setText(str(bytes(self.adr, 'cp1251').decode('cp866')))
-        self.Address.setPlaceholderText('Пример: г. Москва, ул. Первомайская, д. 1')
+            self.Address.setText(self.adr)
+        self.Address.setPlaceholderText('Пример: Москва')
 
         self.Square_label = Qt.QLabel('Площадь (м²):')
         self.Square_label.setFont(Var.font)
@@ -49,7 +49,7 @@ class EditBuild(Qt.QDialog):
             self.Square.setText(str(self.sq))
         self.Square.setPlaceholderText('Пример: 66')
 
-        self.Price_label = Qt.QLabel('Цена от (₽):')
+        self.Price_label = Qt.QLabel('Цена от (млн. ₽):')
         self.Price_label.setFont(Var.font)
         self.Price = Qt.QTextEdit()
         self.Price.setFont(Var.font)
@@ -57,10 +57,22 @@ class EditBuild(Qt.QDialog):
         if self.id_build != -1:
             self.pr = Var.one_query('price', 'buildings', id_bd)
             self.Price.setText(str(self.pr))
-        self.Price.setPlaceholderText('Пример: 1000000')
+        self.Price.setPlaceholderText('Пример: 11.5')
+
+        self.Descript_label = Qt.QLabel('Описание:')
+        self.Descript_label.setFont(Var.font)
+        self.Descript = Qt.QTextEdit()
+        self.Descript.setFont(Var.font)
+        self.Descript.setFixedHeight(80)
+        if self.id_build != -1:
+            self.dsc = Var.one_query('descript', 'buildings', id_bd)
+            print(self.dsc)
+            if self.dsc is not None:
+                self.Descript.setText(str(self.dsc))
+        self.Descript.setPlaceholderText('Пример: Кирпичный дом с живописным видом из окна')
 
         self.PicsTable = Qt.QTableWidget()
-        self.PicsTable.setFixedHeight(160)
+        self.PicsTable.setFixedHeight(100)
 
         self.ConfirmButton = Qt.QPushButton('Подтвердить')
         self.ConfirmButton.setFont(Var.font)
@@ -94,6 +106,8 @@ class EditBuild(Qt.QDialog):
         self.vh_layout.addWidget(self.Square)
         self.vh_layout.addWidget(self.Price_label)
         self.vh_layout.addWidget(self.Price)
+        self.vh_layout.addWidget(self.Descript_label)
+        self.vh_layout.addWidget(self.Descript)
         self.vh_layout.addWidget(self.PicsTable)
         if not self.id_build != -1:
             self.AddButton.setEnabled(False)
@@ -120,36 +134,32 @@ class EditBuild(Qt.QDialog):
         self.accept()
 
     def save_bld(self):
-        adr = self.Address.toPlainText().encode('cp866').decode('cp1251')
+        adr = self.Address.toPlainText()
         sqr = self.Square.toPlainText()
         pr = self.Price.toPlainText()
-        if not (adr and sqr and pr):
+        dscr = self.Descript.toPlainText()
+        if not (adr and sqr and pr and dscr):
             Qt.QMessageBox.critical(self, 'Ошибка!', 'Заполните все поля!')
         else:
             try:
-                pr = int(pr)
-                sqr = int(sqr)
+                pr = float(pr)
             except ValueError:
-                Qt.QMessageBox.critical(self, 'Ошибка!', 'Проверьте правильность ввода площади и цены!')
+                Qt.QMessageBox.critical(self, 'Ошибка!', 'Проверьте правильность ввода цены!')
             else:
                 if len(adr) > 255:
-                    Qt.QMessageBox.critical(self, 'Ошибка!', 'Адрес не может быть длиннее 255 знаков!')
-                elif sqr < 1:
-                    Qt.QMessageBox.critical(self, 'Ошибка!', 'Площадь не может быть меньше 1!')
-                elif sqr > 2147483647:
-                    Qt.QMessageBox.critical(self, 'Ошибка!', 'Слишком больше значение площади!')
-                elif pr < 1:
-                    Qt.QMessageBox.critical(self, 'Ошибка!', 'Цена не может быть меньше 1!')
-                elif pr > 9223372036854775807:
+                    Qt.QMessageBox.critical(self, 'Ошибка!', 'Город не может быть длиннее 255 знаков!')
+                elif pr <= 0:
+                    Qt.QMessageBox.critical(self, 'Ошибка!', 'Цена не может быть меньше или равна 0!')
+                elif pr > 100000:
                     Qt.QMessageBox.critical(self, 'Ошибка!', 'Слишком больше значение цены!')
                 elif self.id_build != -1:
-                    work_query = f'UPDATE buildings SET address = \'{adr}\', square = \'{sqr}\', price = \'{pr}\' ' \
-                                 f'WHERE id = {self.id_build}'
+                    work_query = f'UPDATE buildings SET address = \'{adr}\', square = \'{sqr}\', price = \'{pr}\', ' \
+                                 f'descript = \'{dscr}\' WHERE id = {self.id_build}'
                     Var.cursor.execute(work_query)
                     Var.connection.commit()
                 else:
-                    work_query = f'INSERT INTO buildings (address, square, price) ' \
-                                 f'VALUES (\'{adr}\', \'{sqr}\', \'{pr}\')'
+                    work_query = f'INSERT INTO buildings (address, square, price, descript) ' \
+                                 f'VALUES (\'{adr}\', \'{sqr}\', \'{pr}\', \'{dscr}\')'
                     Var.cursor.execute(work_query)
                     Var.connection.commit()
                     work_query = f'SELECT id FROM buildings WHERE address = %s AND square = %s AND price = %s'
@@ -160,6 +170,8 @@ class EditBuild(Qt.QDialog):
                     self.ID_label.setText(f'ID: {self.id_build}')
                     self.AddButton.setEnabled(True)
                     self.notif.setHidden(True)
+                    if not os.path.exists(f'Images/{self.id_build}') and self.id_build != -1:
+                        os.mkdir(f'Images/{self.id_build}')
 
     def cancel_bld(self):
         self.reject()

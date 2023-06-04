@@ -13,11 +13,6 @@ import Client_Editor
 import Var
 
 
-def add():
-    ad = Add_request.NewReq()
-    ad.exec_()
-
-
 class MainWindow(Qt.QMainWindow):
 
     def __init__(self):
@@ -85,7 +80,12 @@ class MainWindow(Qt.QMainWindow):
 
         self.edit_clnt_btn.clicked.connect(self.editor)
 
-        self.add_req_btn.clicked.connect(add)
+        self.add_req_btn.clicked.connect(self.add)
+
+    def add(self):
+        ad = Add_request.NewReq()
+        if ad.exec_():
+            self.state_cb()
 
     def editor(self):
         sender = self.sender()
@@ -132,7 +132,7 @@ class MainWindow(Qt.QMainWindow):
         self.table.setRowCount(0)
         self.table.setColumnCount(10)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "ФИО", "Адрес помещения", "Дата заявки", "Выполнение", "Телефон", "Telegram", "WhatsApp", "Viber",
+            ["ID", "ФИО", "Город", "Дата заявки", "Выполнение", "Телефон", "Telegram", "WhatsApp", "Viber",
              "Email"])
 
         if state:
@@ -163,11 +163,11 @@ class MainWindow(Qt.QMainWindow):
             item.setTextAlignment(Qtt.AlignCenter)
             self.table.setItem(row_count, 0, item)
 
-            item = QTableWidgetItem(bytes(client_name, 'cp1251').decode('cp866'))
+            item = QTableWidgetItem(client_name)
             item.setTextAlignment(Qtt.AlignCenter)
             self.table.setItem(row_count, 1, item)
 
-            item = QTableWidgetItem(bytes(building_address, 'cp1251').decode('cp866'))
+            item = QTableWidgetItem(building_address)
             item.setTextAlignment(Qtt.AlignCenter)
             self.table.setItem(row_count, 2, item)
 
